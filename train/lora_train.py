@@ -25,7 +25,9 @@ for f in files:
                 texts.append(json.loads(line)["text"])
 
 print(f"[ml-loop] собрано примеров: {len(texts)}")
-assert len(texts) >= 20, "Нужно минимум 20 примеров"
+if len(texts) < 20:
+    print(f"[ml-loop] мало данных ({len(texts)} < 20), пропускаем обучение")
+    raise SystemExit(0)
 
 def fmt(t):
     return {"text": f"Проанализируй текст и выдели главное:\n{t}\nГлавное:"}
