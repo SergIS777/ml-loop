@@ -26,3 +26,4 @@ graph LR
 
 1. Данные собирает n8n workflow (ежедневно 02:00)
 2. Обучение: Actions → ml-loop-train → Run workflow (или cron по понедельникам)
+3. n8n workflow сбора данных: `n8n/ml-loop-collect.json` (при импорте подключите свои credentials)
