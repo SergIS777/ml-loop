@@ -77,6 +77,7 @@ trainer = SFTTrainer(
     peft_config=peft_config,
     tokenizer=tokenizer,
     max_seq_length=256,
+    dataset_text_field="text",
 )
 trainer.train()
 
