@@ -1,0 +1,494 @@
+{
+  "name": "ML-Loop: сбор данных",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "id": "ВАШ ID",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.reddit.com/r/technology/top.json?limit=25",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; ml-loop/1.0)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Reddit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        192
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=25",
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "HN",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://en.wikipedia.org/api/rest_v1/feed/featured/{{ $now.format('yyyy/MM/dd') }}",
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Wiki",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet texts = [];\nfor (const it of items) {\n  const j = it.json;\n  if (j.data && Array.isArray(j.data.children)) {\n    for (const c of j.data.children) texts.push((c.data.title||'') + '. ' + (c.data.selftext||''));\n  } else if (Array.isArray(j.hits)) {\n    for (const h of j.hits) texts.push((h.title||'') + '. ' + (h.comment_text||h.story_text||''));\n  } else if (j.mostread && Array.isArray(j.mostread.articles)) {\n    for (const a of j.mostread.articles) texts.push((a.title||'') + '. ' + (a.extract||''));\n  }\n}\n\n// Нормализация: URL, HTML-теги, сущности, пробелы\ntexts = texts.map(t => (t||'').replace(/https?:\\/\\/\\S+/g,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&amp;|&lt;|&gt;|&#x27;|&#\\d+;/g,' ').replace(/\\s+/g,' ').trim());\n\n// Фильтры: длина и спецсимволы\ntexts = texts.filter(t => t.length >= 80 && t.length <= 2000);\ntexts = texts.filter(t => { const s=(t.match(/[^\\w\\s.,!?;:'\\\"()-]/g)||[]).length; return s/t.length < 0.2; });\n\n// Shingle-дедупликация (5 слов, порог 50%)\nfunction shingles(t){ const w=t.toLowerCase().split(' '); const s=new Set(); for(let i=0;i+5<=w.length;i++) s.add(w.slice(i,i+5).join(' ')); return s; }\nconst seen=[]; const out=[];\nfor (const t of texts) {\n  const sh = shingles(t); let dup=false;\n  for (const prev of seen) { let inter=0; for (const x of sh) if (prev.has(x)) inter++;\n    const union = sh.size + prev.size - inter;\n    if (union>0 && inter/union>0.5) { dup=true; break; } }\n  if (!dup) { seen.push(sh); out.push(t); }\n}\n\n// Безопасная строка для Groq (без двойных кавычек)\nconst safe = out.slice(0,30).map(t => t.replace(/\"/g, \"'\").trim());\nconst userContent = safe.join(\" |SEP| \");\n\nreturn [{ json: { texts: out.slice(0,30), userContent } }];"
+      },
+      "id": "ВАШ ID",
+      "name": "Clean & Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"model\":\"llama-3.1-8b-instant\",\"response_format\":{\"type\":\"json_object\"},\"messages\":[{\"role\":\"system\",\"content\":\"Ты куратор датасета. Оцени каждый текст. Верни строго JSON {\\\"results\\\":[{\\\"i\\\":0,\\\"pass\\\":true}]}. pass=true только если текст связный, без токсичности, спама и персональных данных.\"},{\"role\":\"user\",\"content\":\"{{ $json.userContent }}\"}]}",
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Groq Curator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        400
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ВАШ TOKEN",
+          "name": "Groq key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed; try { parsed = JSON.parse(raw); } catch(e) { parsed = {results:[]}; }\nconst texts = $('Clean & Dedup').first().json.texts || [];\nconst passed = (parsed.results||[]).filter(r=>r&&r.pass).map(r=>texts[r.i]).filter(t=>typeof t==='string'&&t.length>0);\nreturn [{ json: { passed } }];"
+      },
+      "id": "ВАШ ID",
+      "name": "Parse Groq",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const passed = $input.first().json.passed || [];\nif (!passed.length) return [{ json: { count:0, name:'', b64:'' } }];\nconst jsonl = passed.map(t=>JSON.stringify({text:t})).join('\\n');\nconst b64 = Buffer.from(jsonl,'utf-8').toString('base64');\nconst name = 'batch-' + new Date().toISOString().replace(/[:T]/g,'-').replace(/\\..+/,'') + '.jsonl';\nreturn [{ json: { count: passed.length, name, b64 } }];"
+      },
+      "id": "ВАШ ID",
+      "name": "Prepare Commit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Has Data",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/SergIS777/ml-loop/contents/data/{{ $json.name }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ВСТАВЬ_GH_TOKEN"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"message\":\"ml-loop data batch ({{ $json.count }})\",\"content\":\"{{ $json.b64 }}\"}",
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "GitHub Commit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1552,
+        304
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ВАШ TOKEN",
+          "name": "Github key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Enough Data",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/SergIS777/ml-loop/actions/workflows/train.yml/dispatches",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ВСТАВЬ_GH_TOKEN"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"ref\":\"main\"}",
+        "options": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Dispatch Train",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1776,
+        656
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ВАШ TOKEN",
+          "name": "Github key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "=ВАШ ID",
+        "text": "=📥 ML-Loop: batch ушёл в GitHub, примеров в цикле накопления",
+        "additionalFields": {}
+      },
+      "id": "ВАШ ID",
+      "name": "Telegram Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1776,
+        304
+      ],
+      "webhookId": "ВАШ ID",
+      "credentials": {
+        "telegramApi": {
+          "id": "ВАШ ID",
+          "name": "ml_loop_isakov_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search?tags=comment&hitsPerPage=50",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        16
+      ],
+      "id": "ВАШ ID",
+      "name": "HN COMMENTS"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Reddit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HN",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wiki",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HN COMMENTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit": {
+      "main": [
+        [
+          {
+            "node": "Clean & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HN": {
+      "main": [
+        [
+          {
+            "node": "Clean & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wiki": {
+      "main": [
+        [
+          {
+            "node": "Clean & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & Dedup": {
+      "main": [
+        [
+          {
+            "node": "Groq Curator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Curator": {
+      "main": [
+        [
+          {
+            "node": "Parse Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Groq": {
+      "main": [
+        [
+          {
+            "node": "Prepare Commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Commit": {
+      "main": [
+        [
+          {
+            "node": "Has Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data": {
+      "main": [
+        [
+          {
+            "node": "GitHub Commit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enough Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub Commit": {
+      "main": [
+        [
+          {
+            "node": "Telegram Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enough Data": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Dispatch Train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HN COMMENTS": {
+      "main": [
+        [
+          {
+            "node": "Clean & Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ВАШ ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ВАШ ID"
+  },
+  "nodeGroups": [],
+  "id": "ВАШ ID",
+  "tags": []
+}
