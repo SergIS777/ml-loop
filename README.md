@@ -1,5 +1,7 @@
 # ML-Loop — self-hosted ML pipeline
 
+![License](https://img.shields.io/github/license/SergIS777/ml-loop) ![Release](https://img.shields.io/github/v/release/SergIS777/ml-loop) ![Tests](https://img.shields.io/github/actions/workflow/status/SergIS777/ml-loop/train.yml?label=tests)
+
 ![ML-Loop: КАК ЭТО ВЫГЛЯДИТ ВИЗУАЛЬНО](ml-loop.jpg)
 
 Автоматический цикл: сбор данных → очистка → LoRA fine-tuning → публикация адаптера.
