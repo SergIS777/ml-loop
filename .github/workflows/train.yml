@@ -15,11 +15,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest -q
+
       - name: Install deps
         run: |
           pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install "transformers==4.46.3" "peft==0.13.2" "trl==0.12.1" "datasets==3.1.0" "accelerate==1.1.1" huggingface_hub requests
+          pip install "transformers==4.46.3" "peft==0.13.2" "trl==0.12.1" "datasets==3.1.0" "accelerate==1.1.1" huggingface_hub requests tenacity
 
       - name: Train LoRA
         env:

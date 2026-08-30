@@ -1,0 +1,10 @@
+torch
+transformers==4.46.3
+peft==0.13.2
+trl==0.12.1
+datasets==3.1.0
+accelerate==1.1.1
+huggingface_hub
+requests
+tenacity
+pytest
