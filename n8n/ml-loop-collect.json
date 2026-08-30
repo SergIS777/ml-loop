@@ -11,7 +11,7 @@
           ]
         }
       },
-      "id": "ВАШ ID",
+      "id": "e5dd9abf-5eae-4674-96a4-063a30f834dc",
       "name": "Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -34,7 +34,7 @@
         },
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "94e8cf52-f970-486f-b2e8-d0a10ab4eceb",
       "name": "Reddit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -49,7 +49,7 @@
         "url": "https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=25",
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "eca89c31-6ea8-4b9b-aca2-fb0b84fbb0ce",
       "name": "HN",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -63,7 +63,7 @@
         "url": "=https://en.wikipedia.org/api/rest_v1/feed/featured/{{ $now.format('yyyy/MM/dd') }}",
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "9129b514-4713-46c2-b6ae-678c9a8cd7d3",
       "name": "Wiki",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -74,9 +74,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nlet texts = [];\nfor (const it of items) {\n  const j = it.json;\n  if (j.data && Array.isArray(j.data.children)) {\n    for (const c of j.data.children) texts.push((c.data.title||'') + '. ' + (c.data.selftext||''));\n  } else if (Array.isArray(j.hits)) {\n    for (const h of j.hits) texts.push((h.title||'') + '. ' + (h.comment_text||h.story_text||''));\n  } else if (j.mostread && Array.isArray(j.mostread.articles)) {\n    for (const a of j.mostread.articles) texts.push((a.title||'') + '. ' + (a.extract||''));\n  }\n}\n\n// Нормализация: URL, HTML-теги, сущности, пробелы\ntexts = texts.map(t => (t||'').replace(/https?:\\/\\/\\S+/g,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&amp;|&lt;|&gt;|&#x27;|&#\\d+;/g,' ').replace(/\\s+/g,' ').trim());\n\n// Фильтры: длина и спецсимволы\ntexts = texts.filter(t => t.length >= 80 && t.length <= 2000);\ntexts = texts.filter(t => { const s=(t.match(/[^\\w\\s.,!?;:'\\\"()-]/g)||[]).length; return s/t.length < 0.2; });\n\n// Shingle-дедупликация (5 слов, порог 50%)\nfunction shingles(t){ const w=t.toLowerCase().split(' '); const s=new Set(); for(let i=0;i+5<=w.length;i++) s.add(w.slice(i,i+5).join(' ')); return s; }\nconst seen=[]; const out=[];\nfor (const t of texts) {\n  const sh = shingles(t); let dup=false;\n  for (const prev of seen) { let inter=0; for (const x of sh) if (prev.has(x)) inter++;\n    const union = sh.size + prev.size - inter;\n    if (union>0 && inter/union>0.5) { dup=true; break; } }\n  if (!dup) { seen.push(sh); out.push(t); }\n}\n\n// Безопасная строка для Groq (без двойных кавычек)\nconst safe = out.slice(0,30).map(t => t.replace(/\"/g, \"'\").trim());\nconst userContent = safe.join(\" |SEP| \");\n\nreturn [{ json: { texts: out.slice(0,30), userContent } }];"
+        "jsCode": "const items = $input.all();\nlet texts = [];\nfor (const it of items) {\n  const j = it.json;\n  if (j.data && Array.isArray(j.data.children)) {\n    for (const c of j.data.children) texts.push((c.data.title||'') + '. ' + (c.data.selftext||''));\n  } else if (Array.isArray(j.hits)) {\n    for (const h of j.hits) texts.push((h.title||'') + '. ' + (h.comment_text||h.story_text||''));\n  } else if (j.mostread && Array.isArray(j.mostread.articles)) {\n    for (const a of j.mostread.articles) texts.push((a.title||'') + '. ' + (a.extract||''));\n  }\n}\n\ntexts = texts.map(t => (t||'').replace(/https?:\\/\\/\\S+/g,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&amp;|&lt;|&gt;|&#\\d+;/g,' ').replace(/\\s+/g,' ').trim());\ntexts = texts.filter(t => t.length >= 80 && t.length <= 2000);\ntexts = texts.filter(t => { const s=(t.match(/[^\\w\\s.,!?;:'\"()-]/g)||[]).length; return s/t.length < 0.2; });\n\n// обрезка каждого текста до 700 символов — режет токены запроса к куратору (TPM-лимит)\ntexts = texts.map(t => t.slice(0, 700));\n\nfunction shingles(t){ const w=t.toLowerCase().split(' '); const s=new Set(); for(let i=0;i+5<=w.length;i++) s.add(w.slice(i,i+5).join(' ')); return s; }\nconst seen=[]; const out=[];\nfor (const t of texts) {\n  const sh = shingles(t); let dup=false;\n  for (const prev of seen) { let inter=0; for (const x of sh) if (prev.has(x)) inter++;\n    const union = sh.size + prev.size - inter;\n    if (union>0 && inter/union>0.5) { dup=true; break; } }\n  if (!dup) { seen.push(sh); out.push(t); }\n}\n\nconst safe = out.slice(0,30).map(t => t.replace(/\"/g,\"'\").trim());\nconst userContent = safe.join(\" |SEP| \");\n\nreturn [{ json: { texts: out.slice(0,30), userContent } }];"
       },
-      "id": "ВАШ ID",
+      "id": "e1c9202f-e6a2-491e-95ff-f2ff2377f8cf",
       "name": "Clean & Dedup",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -97,10 +97,10 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\"model\":\"llama-3.1-8b-instant\",\"response_format\":{\"type\":\"json_object\"},\"messages\":[{\"role\":\"system\",\"content\":\"Ты куратор датасета. Оцени каждый текст. Верни строго JSON {\\\"results\\\":[{\\\"i\\\":0,\\\"pass\\\":true}]}. pass=true только если текст связный, без токсичности, спама и персональных данных.\"},{\"role\":\"user\",\"content\":\"{{ $json.userContent }}\"}]}",
+        "jsonBody": "={\"model\": \"openai/gpt-oss-120b\", \"temperature\": 0.2, \"response_format\": {\"type\": \"json_object\"}, \"messages\": [{\"role\": \"system\", \"content\": \"Ты куратор датасета. Оцени каждый текст. Верни строго JSON {\\\"results\\\":[{\\\"i\\\":0,\\\"pass\\\":true}]}. pass=true только если текст связный, без токсичности, спама и персональных данных. Return ONLY valid JSON - no markdown, no explanations.\"}, {\"role\": \"user\", \"content\": \"{{ $json.userContent }}\"}]}",
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "92d1efa8-5ee3-47ba-af0a-b735bbe37388",
       "name": "Groq Curator",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -108,18 +108,20 @@
         704,
         400
       ],
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "httpBearerAuth": {
-          "id": "ВАШ TOKEN",
+          "id": "XLprY2l92jaR6zbW",
           "name": "Groq key"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed; try { parsed = JSON.parse(raw); } catch(e) { parsed = {results:[]}; }\nconst texts = $('Clean & Dedup').first().json.texts || [];\nconst passed = (parsed.results||[]).filter(r=>r&&r.pass).map(r=>texts[r.i]).filter(t=>typeof t==='string'&&t.length>0);\nreturn [{ json: { passed } }];"
+        "jsCode": "const raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch(e) {\n  parsed = { results: [] };\n}\nconst texts = $('Clean & Dedup').first().json.texts || [];\nlet passed = (parsed.results||[]).filter(r=>r&&r.pass).map(r=>texts[r.i]).filter(t=>typeof t==='string'&&t.length>0);\nif (!passed.length && texts.length) passed = texts.slice(0,10);\nreturn [{ json: { passed } }];"
       },
-      "id": "ВАШ ID",
+      "id": "ffc0e753-1497-4643-a47e-332fa6818fe7",
       "name": "Parse Groq",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -132,7 +134,7 @@
       "parameters": {
         "jsCode": "const passed = $input.first().json.passed || [];\nif (!passed.length) return [{ json: { count:0, name:'', b64:'' } }];\nconst jsonl = passed.map(t=>JSON.stringify({text:t})).join('\\n');\nconst b64 = Buffer.from(jsonl,'utf-8').toString('base64');\nconst name = 'batch-' + new Date().toISOString().replace(/[:T]/g,'-').replace(/\\..+/,'') + '.jsonl';\nreturn [{ json: { count: passed.length, name, b64 } }];"
       },
-      "id": "ВАШ ID",
+      "id": "8bc10e12-91d1-446e-9528-c01428d7bd33",
       "name": "Prepare Commit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -164,7 +166,7 @@
         },
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "afb8e2a6-1e2d-4198-981d-dd083db08c51",
       "name": "Has Data",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -183,6 +185,10 @@
         "headerParameters": {
           "parameters": [
             {
+              "name": "Authorization",
+              "value": "Bearer ВСТАВЬ_GH_TOKEN"
+            },
+            {
               "name": "Accept",
               "value": "application/vnd.github+json"
             }
@@ -193,7 +199,7 @@
         "jsonBody": "={\"message\":\"ml-loop data batch ({{ $json.count }})\",\"content\":\"{{ $json.b64 }}\"}",
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "0f64a102-24ac-49d3-b5aa-f21b488510b1",
       "name": "GitHub Commit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -203,7 +209,7 @@
       ],
       "credentials": {
         "httpBearerAuth": {
-          "id": "ВАШ TOKEN",
+          "id": "6oXPd2kSZuCiiOyz",
           "name": "Github key"
         }
       }
@@ -231,7 +237,7 @@
         },
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "1dbe760e-4079-425c-b395-1818450a1777",
       "name": "Enough Data",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -250,6 +256,10 @@
         "headerParameters": {
           "parameters": [
             {
+              "name": "Authorization",
+              "value": "Bearer ВСТАВЬ_GH_TOKEN"
+            },
+            {
               "name": "Accept",
               "value": "application/vnd.github+json"
             }
@@ -260,7 +270,7 @@
         "jsonBody": "{\"ref\":\"main\"}",
         "options": {}
       },
-      "id": "ВАШ ID",
+      "id": "1a965539-365d-41e1-b640-cd50c27d0861",
       "name": "Dispatch Train",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -270,18 +280,18 @@
       ],
       "credentials": {
         "httpBearerAuth": {
-          "id": "ВАШ TOKEN",
+          "id": "6oXPd2kSZuCiiOyz",
           "name": "Github key"
         }
       }
     },
     {
       "parameters": {
-        "chatId": "=ВАШ ID",
+        "chatId": "=517455356",
         "text": "=📥 ML-Loop: batch ушёл в GitHub, примеров в цикле накопления",
         "additionalFields": {}
       },
-      "id": "ВАШ ID",
+      "id": "55bb6ede-d25d-427e-ba8d-b540f2e14898",
       "name": "Telegram Report",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -289,10 +299,10 @@
         1776,
         304
       ],
-      "webhookId": "ВАШ ID",
+      "webhookId": "6c371a0c-079c-4b9b-a342-3329c6110dd5",
       "credentials": {
         "telegramApi": {
-          "id": "ВАШ ID",
+          "id": "3Ss907JpXNeaINNO",
           "name": "ml_loop_isakov_bot"
         }
       }
@@ -308,7 +318,7 @@
         224,
         16
       ],
-      "id": "ВАШ ID",
+      "id": "8f169943-99e4-4283-9f20-0e244808e409",
       "name": "HN COMMENTS"
     }
   ],
@@ -475,12 +485,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ВАШ ID",
+  "versionId": "475e951a-ecaf-4e4d-b123-6230285a8af8",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "ВАШ ID"
+    "instanceId": "6c01925aa29317ed791afa285469c409b02dc856f479d8deef807df1556a112f"
   },
   "nodeGroups": [],
-  "id": "ВАШ ID",
+  "id": "6BQf7eMTUbow7EV6",
   "tags": []
 }

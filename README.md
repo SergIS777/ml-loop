@@ -1,5 +1,7 @@
 # ML-Loop — self-hosted ML pipeline
 
+![ML-Loop: КАК ЭТО ВЫГЛЯДИТ ВИЗУАЛЬНО](ml-loop.jpg)
+
 Автоматический цикл: сбор данных → очистка → LoRA fine-tuning → публикация адаптера.
 
 ## Архитектура
