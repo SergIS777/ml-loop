@@ -4,7 +4,7 @@
 
 ## Презентация
 
-![ML-Loop: Презентация](ml-loop2.jpg)
+![ML-Loop: Презентация](ml-loop2.jpeg)
 
 ## Как выглядит backend
 
