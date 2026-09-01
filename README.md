@@ -1,4 +1,8 @@
+<div align="center">
+
 # ML-Loop — self-hosted ML pipeline
+
+</div>
 
 ![License](https://img.shields.io/github/license/SergIS777/ml-loop) ![Release](https://img.shields.io/github/v/release/SergIS777/ml-loop) ![Tests](https://img.shields.io/github/actions/workflow/status/SergIS777/ml-loop/train.yml?label=tests)
 
