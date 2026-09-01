@@ -21,6 +21,8 @@
 
 ## Архитектура
 
+## 📚 **Полная архитектурная документация** (arc42 + C4): [ARCHITECTURE.md](ARCHITECTURE.md)
+
 ```mermaid
 graph LR
     A[Reddit / HN / Wikipedia] --> B[n8n: очистка + дедуп]
