@@ -60,9 +60,9 @@ MIT
 
 ---
 
-## Автор: **Сергей Исаков** 
+## Автор: Сергей Исаков
 
-## Стек: **Python, Streamlit, pandas, Plotly 
+## Стек: Python, Streamlit, pandas, Plotly 
 
 ## Другие проекты автора: https://github.com/SergIS777/voicebot-analytics · https://github.com/SergIS777/voicebot · https://github.com/SergIS777/multi-agent-rag
 
