@@ -60,15 +60,22 @@ MIT
 
 ---
 
-## Автор: Сергей Исаков
-
-## Стек
+## Стек проекта
 - **ML:** Python 3 · torch · transformers · PEFT/LoRA · trl · datasets · accelerate
 - **Курация:** Groq (Llama 3.1)
 - **Хостинг модели:** HuggingFace Hub
 - **Инфраструктура:** GitHub Actions (CPU) · n8n (self-hosted) · Telegram API
 - **Тесты:** pytest
 
-## Другие проекты автора: https://github.com/SergIS777/voicebot-analytics · https://github.com/SergIS777/voicebot · https://github.com/SergIS777/multi-agent-rag
+## Автор: Сергей Исаков
+
+## Резюме на hh.ru  https://spb.hh.ru/resume/cabaf8c9ff07eccd210039ed1f4b75515a6f56
+
+## Связаться с автором проекта sergeyhigh@gmail.com
+
+## Другие проекты автора: 
+- **https://github.com/SergIS777/voicebot-analytics**
+- **https://github.com/SergIS777/voicebot**
+- **https://github.com/SergIS777/multi-agent-rag**
 
 ---
