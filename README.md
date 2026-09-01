@@ -62,6 +62,8 @@ MIT
 
 ## Автор: **Сергей Исаков** 
 
-## Стек: **Python, Streamlit, pandas, Plotly Связанные проекты: https://github.com/SergIS777/voicebot-analytics · https://github.com/SergIS777/voicebot · https://github.com/SergIS777/multi-agent-rag**
+## Стек: **Python, Streamlit, pandas, Plotly 
+
+## Другие проекты автора: https://github.com/SergIS777/voicebot-analytics · https://github.com/SergIS777/voicebot · https://github.com/SergIS777/multi-agent-rag
 
 ---
