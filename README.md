@@ -23,15 +23,6 @@
 
 ## 📚 **Полная архитектурная документация** (arc42 + C4): [ARCHITECTURE.md](ARCHITECTURE.md)
 
-```mermaid
-graph LR
-    A[Reddit / HN / Wikipedia] --> B[n8n: очистка + дедуп]
-    B --> C[Groq: LLM-куратор]
-    C --> D[GitHub: data/*.jsonl]
-    D --> E[GitHub Actions: LoRA Qwen2.5-0.5B]
-    E --> F[HuggingFace: адаптер]
-    E --> G[Telegram: отчёт]
-```
 
 ## Решения (почему так)
 
